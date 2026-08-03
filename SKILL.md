@@ -29,7 +29,7 @@ At each breakpoint going down, reduce:
 
 - **Multi-column grids** → step down one column at a time (4→3→2→1, 3→2→1, 2→1). Don't jump straight to 1.
 - **Side-by-side rows** → `flex-col md:flex-row`.
-- **Wide tables** → card-per-row on mobile (§5).
+- **Wide tables** → card-per-row on mobile (§7).
 - **Inline labels + values** → stack label above value when space runs out.
 
 #### Column reduction — Tailwind patterns
@@ -121,7 +121,70 @@ Always add `whitespace-nowrap` to pills/badges/chips. Pair with `shrink-0` when 
 
 If the label still overflows: reduce `px`, drop font size, shorten copy, or reshape the parent. Never let a pill wrap — it always looks broken.
 
-### 6. Wide tables → card-per-row on mobile
+### 6. Tab strips → scroll or collapse to a dropdown
+
+When a tab row no longer fits, don't wrap it to a second line and don't shrink the labels. Pick by **how far past the edge it runs**:
+
+| Overflow | Pattern |
+|---|---|
+| A few tabs past the viewport (~1–1.5 screens) | **Horizontal scroll** — keeps every option visible and one tap away |
+| Many tabs, or a long tail the user must hunt through (≳2 screens) | **Collapse to a dropdown / select** — a scroll strip that runs for screens hides its own tail |
+
+Scrolling preserves *glanceability*: the user sees the options exist and switches with one tap. That advantage disappears once the strip is long enough that reaching the last tab is a swiping chore — at that point a dropdown showing the current selection plus a full list on tap is both faster and more honest about how many options there are. Count matters less than distance: 6 short labels may fit fine, while 4 long ones may not.
+
+If a dropdown is the right call, keep the desktop tabs and swap only at the breakpoint — same state, two presentations:
+
+```jsx
+{/* mobile: dropdown */}
+<div className="md:hidden">
+  <label className="sr-only" htmlFor="section-select">Section</label>
+  <select
+    id="section-select"
+    value={active}
+    onChange={e => setActive(e.target.value)}
+    className="w-full min-h-[44px] text-[16px] px-16 ..."   /* ≥16px — §9 */
+  >
+    {tabs.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
+  </select>
+</div>
+
+{/* tablet and up: tabs */}
+<div role="tablist" className="hidden md:flex md:flex-wrap items-center gap-12">…</div>
+```
+
+A native `<select>` gets the platform picker free (iOS wheel, Android sheet) — worth preferring over a custom menu unless the options need icons or descriptions. It's also the one place `hidden md:block` is legitimate rather than an overflow band-aid (§2), because it swaps in a genuinely different control, not the same one hidden.
+
+#### Horizontal scroll — one axis only
+
+When scrolling is the right call, **constrain the scroll to the horizontal axis alone:** `overflow-x-auto` paired with `overflow-y-hidden`. Never `overflow-auto` (both axes) and never `overflow-y-auto` on a tab strip.
+
+```jsx
+<div
+  role="tablist"
+  className="
+    flex md:flex-wrap items-center gap-8 md:gap-12
+    overflow-x-auto overflow-y-hidden md:overflow-visible
+    overscroll-x-contain scrollbar-none
+    -mx-20 px-20 md:mx-0 md:px-0        /* bleed to edges so the last tab isn't clipped mid-gutter */
+  "
+>
+  {tabs.map(t => (
+    <button key={t.id} role="tab" className="shrink-0 whitespace-nowrap min-h-[44px] px-16 ...">
+      {t.label}
+    </button>
+  ))}
+</div>
+```
+
+- **`overflow-y-hidden` is the load-bearing part.** A bare `overflow-x-auto` computes the *other* axis to `auto`, not `visible` — so the strip becomes a vertical scroll container too. It's usually invisible (nothing overflows vertically), but a focus ring, a hover lift, or an active-tab underline sitting a pixel outside the box turns into a stray vertical scrollbar and a container that jiggles a few pixels on tap.
+- **`shrink-0` on every tab** — without it flex compresses them to fit and nothing ever overflows, so the strip silently never scrolls. Pair with `whitespace-nowrap` (§5) so labels don't wrap mid-word.
+- **`overscroll-x-contain`** stops a horizontal swipe past the last tab from triggering browser back-navigation or rubber-banding the page.
+- **Bleed to the viewport edges** with `-mx-20 px-20`. A scroll container that stops at the page gutter clips the last tab against whitespace and reads as broken rather than scrollable.
+- **Don't hide the affordance entirely.** `scrollbar-none` is fine, but the strip must *look* scrollable — leave the next tab partially visible at the right edge, or add a fade mask. A row that ends flush on a tab boundary looks complete, and users never swipe it.
+- Keep touch targets ≥44px (§8); scrollable tabs are still tap targets.
+- This is a **tab-strip** pattern, not a data pattern — wide *tables* still become cards (§7), never a horizontal scroll.
+
+### 7. Wide tables → card-per-row on mobile
 
 Never horizontally scroll a data table. Transform it: each row becomes a card, column headers move inline above each value.
 
@@ -161,11 +224,11 @@ Never horizontally scroll a data table. Transform it: each row becomes a card, c
 
 Use `grid grid-cols-2` inside cards when two columns are comparable (e.g. tier + reward) to guarantee a 50/50 split. For a narrow column inside a card, equal widths may give too much room — stack vertically instead.
 
-### 7. Touch targets
+### 8. Touch targets
 
 Interactive elements need ≥ 44×44 CSS px. Add padding or `min-h-[44px]` / `min-w-[44px]` on the element (not just the icon).
 
-### 8. Form inputs — ≥16px font size on mobile
+### 9. Form inputs — ≥16px font size on mobile
 
 iOS Safari auto-zooms the viewport when a user focuses a text field whose font size is under 16px, and doesn't zoom back out. Every focusable text control needs **≥16px** at mobile widths:
 
@@ -181,7 +244,7 @@ iOS Safari auto-zooms the viewport when a user focuses a text field whose font s
 - The visual size can still be reduced elsewhere (label, helper text, placeholder is fine at 16px too — placeholder inherits the input's size, so don't shrink it separately).
 - Never "fix" this with `<meta name="viewport" content="user-scalable=no">` or `maximum-scale=1` — it blocks pinch-zoom and fails WCAG 1.4.4.
 
-### 9. Modals — bottom sheet on mobile, scroll the body, pin the CTA
+### 10. Modals — bottom sheet on mobile, scroll the body, pin the CTA
 
 **On mobile, a modal is a bottom sheet.** It anchors to the bottom edge, spans full width, and rounds only its top corners — never a centered, floating card with side gutters. It becomes a centered dialog at `md:` and up.
 
@@ -231,7 +294,7 @@ Three-part flex column: fixed header → `flex-1 overflow-y-auto` body → fixed
 
 Same rule applies to bottom sheets, drawers, and side panels with actions — the confirming action is pinned, the content scrolls.
 
-### 10. Text-over-image overlays
+### 11. Text-over-image overlays
 
 For **left text + right/background image** layouts, apply this 3-part pattern:
 
@@ -244,7 +307,7 @@ For **left text + right/background image** layouts, apply this 3-part pattern:
 
 3. **`object-position` per breakpoint** — for wide hero art with focal content on the right of the source: `object-[75%_center] md:object-right`. Higher % moves the crop window right, pulling right-side artwork *left* into the frame. If user says "move image right," raise %; if "character bleeding under text," lower %. Adjust in 5–10% increments.
 
-### 11. Dev tooling
+### 12. Dev tooling
 
 Check that any dev panel/FAB doesn't collide with mobile content (especially a sticky bottom panel). Move to a corner with `safe-area-inset` support.
 
@@ -269,13 +332,19 @@ Check that any dev panel/FAB doesn't collide with mobile content (especially a s
 | Body copy | body-large | body-large | body-default |
 | Input / textarea / select text | — | — | **≥16px** (never smaller) |
 | Modal shape | centered dialog | centered dialog | bottom sheet, `max-h-[90dvh]` |
+| Tab strip | full row | full row / wrap | scroll-x (few) or `<select>` (many) |
 | Grid columns | 3–4 | 2 | 1 |
 
 ## Anti-patterns
 
 - Hardcoding `text-[Xpx]` when tokens auto-scale.
 - Same padding across all breakpoints.
-- `hidden md:block` to "fix" overflow — reshape instead.
+- `hidden md:block` to "fix" overflow — reshape instead. (Swapping tabs for a `<select>` is the exception: a different control, not the same one hidden.)
+- `overflow-auto` or a bare `overflow-x-auto` on a tab strip — pair it with `overflow-y-hidden` or you get a stray vertical scroll container.
+- Tabs that wrap to a second line, or shrink their labels, instead of scrolling.
+- Missing `shrink-0` on scrollable tabs — flex compresses them and the strip never scrolls at all.
+- A scroll strip running for screens when a dropdown would show the whole list at once.
+- A tab strip that ends flush at the viewport edge — nothing signals it scrolls.
 - Touch targets under 44px.
 - Text inputs under 16px on mobile — iOS Safari auto-zooms on focus and never zooms back.
 - Disabling zoom (`user-scalable=no` / `maximum-scale=1`) to hide the input-zoom problem.
