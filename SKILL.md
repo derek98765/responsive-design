@@ -317,7 +317,36 @@ Check that any dev panel/FAB doesn't collide with mobile content (especially a s
 2. Run preflight (tokens, breakpoints, component library, CLAUDE.md).
 3. Apply principles above; prefer tokens over hardcoded values.
 4. For text-over-image: apply the full 3-part pattern.
-5. Verify in browser at ~390px (mobile), ~768px (tablet), ≥1280px (desktop).
+5. Verify at ~390px (mobile), ~768px (tablet), ≥1280px (desktop). When the browser window itself can't be narrowed to mobile width, use the device-frame technique below instead of skipping mobile verification.
+
+### Verifying mobile without resizing the browser
+
+When the tool driving the browser can't shrink the actual viewport (e.g. a fixed-size embedded preview), don't skip mobile verification — simulate the device size *inside* the existing viewport with a temporary frame.
+
+Wrap the page (or drop an overlay) in a fixed-size box matching the target device — **393×844 for mobile** (iPhone 14/15 logical size) — centered in whatever canvas the tool gives you, with its own scroll/overflow boundary so the contents inside behave exactly as they would in a real 393px-wide viewport.
+
+```html
+<div style="
+  position: fixed; inset: 0; z-index: 99999;
+  display: flex; align-items: center; justify-content: center;
+  background: #1a1a1a;
+">
+  <iframe
+    src="<page-under-test>"
+    style="
+      width: 393px; height: 844px;
+      border: 8px solid #000; border-radius: 40px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    "
+  ></iframe>
+</div>
+```
+
+- **Prefer an `<iframe>` over a plain `<div>` wrapper.** An iframe gets its own layout viewport, so `100vw`/`100dvh`, media queries, and `env(safe-area-inset-*)` all resolve as if the window were actually 393×844 — a resized `<div>` does not, and media-query-driven layouts (most of this skill) will silently keep rendering their desktop branch.
+- **This is a scaffold, not a deliverable.** It exists only so you (and the user, via screenshot) can see the mobile layout without touching the real viewport. Remove it completely — the wrapper markup, any injected styles, the iframe — once mobile verification is done. Never ship it or leave it commented out.
+- Take the screenshot of what's *inside* the frame, not the full 1920×1080 canvas, so the user is previewing the device size, not a small box floating in a large one.
+- If the tool can genuinely resize its viewport (most browser automation can, via a `setViewportSize`/`resize` call), use that directly instead — it's simpler and exercises the real viewport rather than a simulated one. Reach for the frame technique only when a true resize isn't available.
+- Same technique works for the ~768px tablet check — swap the frame to 768×1024.
 
 ## Quick Reference
 
