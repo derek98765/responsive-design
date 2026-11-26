@@ -53,7 +53,8 @@ tokens — translate them through the project config.
 3. Read [references/patterns.md](references/patterns.md) and apply the relevant patterns, translating placeholders through the project config; prefer tokens over hardcoded values.
 4. For text-over-image: apply §8's full 3-part pattern.
 5. **If the target touches or renders a text input** (search bar, email/text field, textarea): check its mobile font size (§14) every time, even if the input itself isn't the reason you're in this file. Fix it in the shared component if it's under 16px — don't skip this because the input wasn't the primary target.
-6. Verify at ~390px (mobile), ~768px (tablet), ≥1280px (desktop) — in the browser, or by the project's own verification rule if its config/CLAUDE.md sets one.
+6. For mobile-only refinements, preserve the approved desktop layout with breakpoint-scoped changes. After changing typography or countdown width, recheck wrapping and vertical density on mobile, and confirm the desktop layout has not regressed.
+7. Verify at ~390px (mobile), ~768px (tablet), ≥1280px (desktop) — in the browser, or by the project's own verification rule if its config/CLAUDE.md sets one.
 
 ## Quick Reference
 
